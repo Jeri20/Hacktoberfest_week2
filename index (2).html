@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ReplyDesk · Review Replier</title>
+<style>
+  :root {
+    --bg: #f6f5f1; --card: #ffffff; --ink: #1d1d1b; --muted: #6b6a64; --line: #e4e2da;
+    --brand: #1f6f5c; --brand-ink: #ffffff; --bad: #c0392b; --bad-bg: #fdecea;
+    --good: #1f6f5c; --good-bg: #e6f4ef; --warn-bg: #fff6df;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151513; --card: #1f1f1c; --ink: #efeee8; --muted: #a09f97; --line: #343430;
+      --brand: #3fb394; --brand-ink: #0d1f1a; --bad: #ff7b6b; --bad-bg: #3a1f1b;
+      --good: #3fb394; --good-bg: #17302a; --warn-bg: #3a3118;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 24px 16px 80px; }
+  header h1 { margin: 0; font-size: 1.6rem; letter-spacing: -0.02em; }
+  header p { margin: 4px 0 0; color: var(--muted); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin-top: 18px; }
+  .card h2 { margin: 0 0 4px; font-size: 1.05rem; }
+  .hint { color: var(--muted); font-size: 0.88rem; margin: 0 0 12px; }
+  label { display: block; font-weight: 600; font-size: 0.9rem; margin: 12px 0 4px; }
+  input[type=text], textarea {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px;
+    background: var(--bg); color: var(--ink); font: inherit;
+  }
+  textarea { resize: vertical; min-height: 90px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
+  button {
+    font: inherit; font-weight: 600; border-radius: 10px; padding: 10px 16px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--card); color: var(--ink);
+  }
+  button.primary { background: var(--brand); color: var(--brand-ink); border-color: var(--brand); }
+  button:disabled { opacity: 0.6; cursor: wait; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+  .status { color: var(--muted); font-size: 0.9rem; }
+  .error { background: var(--bad-bg); color: var(--bad); padding: 10px 12px; border-radius: 10px; margin-top: 12px; display: none; }
+  .badge { display: inline-block; font-size: 0.75rem; font-weight: 700; padding: 2px 8px; border-radius: 99px; }
+  .badge.angry { background: var(--bad-bg); color: var(--bad); }
+  .badge.ok { background: var(--good-bg); color: var(--good); }
+  .badge.neutral { background: var(--warn-bg); color: var(--ink); }
+  .review { border-top: 1px solid var(--line); padding: 16px 0; }
+  .review:first-child { border-top: 0; }
+  .review.is-angry { background: linear-gradient(90deg, var(--bad-bg), transparent 40%); margin: 0 -18px; padding: 16px 18px; border-radius: 10px; }
+  .meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); }
+  .stars { color: #e0a100; letter-spacing: 1px; }
+  .review blockquote { margin: 8px 0; padding-left: 12px; border-left: 3px solid var(--line); }
+  .reply textarea { min-height: 80px; margin-top: 6px; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .chip { font-size: 0.8rem; padding: 2px 9px; border-radius: 99px; background: var(--bg); border: 1px solid var(--line); }
+  .chip.neg { background: var(--bad-bg); border-color: transparent; color: var(--bad); }
+  .bar { display: grid; grid-template-columns: 150px 1fr 36px; gap: 10px; align-items: center; margin: 6px 0; font-size: 0.9rem; }
+  .bar .track { background: var(--bg); border-radius: 99px; height: 10px; overflow: hidden; }
+  .bar .fill { background: var(--brand); height: 100%; border-radius: 99px; }
+  .bar .fill.neg { background: var(--bad); }
+  .month { margin-top: 14px; }
+  .month h3 { margin: 0 0 4px; font-size: 0.95rem; }
+  .summary { display: flex; gap: 12px; flex-wrap: wrap; }
+  .stat { flex: 1; min-width: 120px; background: var(--bg); border-radius: 10px; padding: 10px 12px; }
+  .stat b { font-size: 1.4rem; display: block; }
+  #results { display: none; }
+  footer { margin-top: 30px; color: var(--muted); font-size: 0.82rem; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>ReplyDesk</h1>
+    <p>Paste your Google reviews. Get replies in your voice, angry reviews flagged, and monthly themes.</p>
+  </header>
+
+  <section class="card">
+    <h2>1. Your business & voice</h2>
+    <p class="hint">Paste 3 to 5 replies you have written to real reviews. The AI copies your tone. Saved in your browser only.</p>
+    <div class="grid">
+      <div>
+        <label for="biz">Business name</label>
+        <input type="text" id="biz" placeholder="Rani's Salon">
+      </div>
+      <div>
+        <label for="owner">Sign replies as</label>
+        <input type="text" id="owner" placeholder="Rani (Owner)">
+      </div>
+    </div>
+    <label for="samples">Sample replies (separate each with a blank line)</label>
+    <textarea id="samples" rows="7" placeholder="Thank you so much, Priya! We loved having you in and can't wait to see you again. – Rani&#10;&#10;I'm really sorry about the wait, Arjun. That's not the experience we want..."></textarea>
+  </section>
+
+  <section class="card">
+    <h2>2. Your reviews</h2>
+    <p class="hint">
+      Separate reviews with a blank line. Optional format per review: <code>2026-09 | 2 | review text</code> (month | stars | text). Month enables the monthly themes view.
+    </p>
+    <textarea id="reviews" rows="10" placeholder="2026-09 | 5 | Best haircut I've had in years. Loved the staff!&#10;&#10;2026-09 | 1 | Waited 45 minutes even with an appointment. Rude receptionist."></textarea>
+    <div class="row">
+      <button class="primary" id="go">Generate replies</button>
+      <button id="demo" type="button">Load demo data</button>
+      <label style="margin:0;font-weight:500">
+        <input type="file" id="file" accept=".txt,.csv" hidden>
+        <span style="cursor:pointer;text-decoration:underline">Import .txt / .csv</span>
+      </label>
+      <span class="status" id="status"></span>
+    </div>
+    <div class="error" id="error"></div>
+  </section>
+
+  <div id="results">
+    <section class="card">
+      <h2>Summary</h2>
+      <div class="summary" id="summary"></div>
+    </section>
+    <section class="card">
+      <h2>Themes</h2>
+      <p class="hint">Red bars mostly come from negative reviews.</p>
+      <div id="themes"></div>
+      <div id="months"></div>
+    </section>
+    <section class="card">
+      <h2>Drafted replies</h2>
+      <p class="hint">Edit anything, then copy and paste into Google Business Profile. Always read before posting.</p>
+      <div id="list"></div>
+    </section>
+  </div>
+
+  <footer>Replies are AI drafts. Review before publishing.</footer>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const BATCH = 8;
+let state = [];
+
+// ---------- persistence (samples + names stay in the browser) ----------
+for (const k of ['biz', 'owner', 'samples']) {
+  try { $(k).value = localStorage.getItem('rd_' + k) || ''; } catch (e) {}
+  $(k).addEventListener('input', () => { try { localStorage.setItem('rd_' + k, $(k).value); } catch (e) {} });
+}
+
+// ---------- parsing ----------
+function parseReviews(text) {
+  return text.split(/\n\s*\n/).map(b => b.trim()).filter(Boolean).map((block, i) => {
+    const m = block.match(/^(?:(\d{4}-\d{2})(?:-\d{2})?\s*\|\s*)?(?:([1-5])\s*\|\s*)?([\s\S]+)$/);
+    return { id: i + 1, month: m[1] || 'Undated', stars: m[2] ? +m[2] : null, text: m[3].trim() };
+  });
+}
+function parseSamples(text) {
+  return text.split(/\n\s*\n/).map(s => s.trim()).filter(Boolean).slice(0, 6);
+}
+
+// ---------- API ----------
+async function callApi(payload) {
+  const res = await fetch('/api/generate', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Request failed (' + res.status + ')');
+  return data.results || [];
+}
+
+$('go').addEventListener('click', async () => {
+  const reviews = parseReviews($('reviews').value);
+  const samples = parseSamples($('samples').value);
+  const err = $('error'); err.style.display = 'none';
+  if (!reviews.length) return showError('Paste at least one review first.');
+  if (reviews.length > 60) return showError('Please keep it to 60 reviews at a time.');
+  if (samples.length < 1) return showError('Add at least one sample reply so the AI can learn your tone (3 to 5 is best).');
+
+  $('go').disabled = true;
+  state = reviews.map(r => ({ ...r, reply: '', angry: false, sentiment: 'neutral', themes: [] }));
+  try {
+    for (let i = 0; i < reviews.length; i += BATCH) {
+      $('status').textContent = `Working… ${Math.min(i + BATCH, reviews.length)} / ${reviews.length}`;
+      const chunk = reviews.slice(i, i + BATCH);
+      const out = await callApi({
+        business: $('biz').value.trim(), owner: $('owner').value.trim(), samples,
+        reviews: chunk.map(r => ({ id: r.id, stars: r.stars, text: r.text }))
+      });
+      for (const o of out) {
+        const item = state.find(s => s.id === o.id);
+        if (!item) continue;
+        item.reply = String(o.reply || '');
+        item.angry = !!o.angry;
+        item.sentiment = ['positive', 'neutral', 'negative'].includes(o.sentiment) ? o.sentiment : 'neutral';
+        item.themes = Array.isArray(o.themes) ? o.themes.map(t => String(t).toLowerCase().trim()).filter(Boolean).slice(0, 4) : [];
+      }
+    }
+    $('status').textContent = 'Done.';
+    render();
+  } catch (e) {
+    showError(e.message);
+    $('status').textContent = '';
+    if (state.some(s => s.reply)) render();
+  } finally {
+    $('go').disabled = false;
+  }
+});
+
+function showError(msg) { const e = $('error'); e.textContent = msg; e.style.display = 'block'; }
+
+// ---------- rendering ----------
+function el(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;
+  return n;
+}
+
+function render() {
+  $('results').style.display = 'block';
+  const done = state.filter(s => s.reply);
+  const angry = done.filter(s => s.angry);
+  const rated = done.filter(s => s.stars);
+  const avg = rated.length ? (rated.reduce((a, s) => a + s.stars, 0) / rated.length).toFixed(1) : '–';
+
+  const sum = $('summary'); sum.innerHTML = '';
+  [[done.length, 'reviews replied'], [angry.length, 'need attention'], [avg, 'avg stars']].forEach(([v, l]) => {
+    const d = el('div', 'stat'); d.append(el('b', '', v), el('span', 'hint', l)); sum.append(d);
+  });
+
+  // themes overall + by month
+  const overall = {}, byMonth = {};
+  for (const s of done) for (const t of s.themes) {
+    const neg = s.sentiment === 'negative' || s.angry;
+    overall[t] = overall[t] || { n: 0, neg: 0 }; overall[t].n++; if (neg) overall[t].neg++;
+    byMonth[s.month] = byMonth[s.month] || {};
+    byMonth[s.month][t] = byMonth[s.month][t] || { n: 0, neg: 0 };
+    byMonth[s.month][t].n++; if (neg) byMonth[s.month][t].neg++;
+  }
+  const top = Object.entries(overall).sort((a, b) => b[1].n - a[1].n).slice(0, 8);
+  const max = top.length ? top[0][1].n : 1;
+  const themes = $('themes'); themes.innerHTML = '';
+  if (!top.length) themes.append(el('p', 'hint', 'No themes found.'));
+  top.forEach(([t, v]) => {
+    const row = el('div', 'bar');
+    const track = el('div', 'track'); const fill = el('div', 'fill' + (v.neg > v.n / 2 ? ' neg' : ''));
+    fill.style.width = (v.n / max * 100) + '%'; track.append(fill);
+    row.append(el('span', '', t), track, el('span', '', v.n));
+    themes.append(row);
+  });
+
+  const months = $('months'); months.innerHTML = '';
+  const names = Object.keys(byMonth).filter(m => m !== 'Undated').sort().reverse();
+  names.forEach(m => {
+    const box = el('div', 'month'); box.append(el('h3', '', m));
+    const chips = el('div', 'chips');
+    Object.entries(byMonth[m]).sort((a, b) => b[1].n - a[1].n).slice(0, 8).forEach(([t, v]) => {
+      chips.append(el('span', 'chip' + (v.neg > v.n / 2 ? ' neg' : ''), `${t} ×${v.n}`));
+    });
+    box.append(chips); months.append(box);
+  });
+
+  // replies: angry first
+  const list = $('list'); list.innerHTML = '';
+  [...state].sort((a, b) => (b.angry - a.angry) || (a.id - b.id)).forEach(s => {
+    const card = el('div', 'review' + (s.angry ? ' is-angry' : ''));
+    const meta = el('div', 'meta');
+    if (s.stars) meta.append(el('span', 'stars', '★'.repeat(s.stars) + '☆'.repeat(5 - s.stars)));
+    if (s.month !== 'Undated') meta.append(el('span', '', s.month));
+    meta.append(el('span', 'badge ' + (s.angry ? 'angry' : s.sentiment === 'positive' ? 'ok' : 'neutral'),
+      s.angry ? 'Needs attention' : s.sentiment));
+    card.append(meta, el('blockquote', '', s.text));
+    if (s.themes.length) {
+      const c = el('div', 'chips'); s.themes.forEach(t => c.append(el('span', 'chip', t))); card.append(c);
+    }
+    const reply = el('div', 'reply');
+    const ta = el('textarea'); ta.value = s.reply; ta.addEventListener('input', () => s.reply = ta.value);
+    const copy = el('button', '', 'Copy reply'); copy.style.marginTop = '8px';
+    copy.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(ta.value); copy.textContent = 'Copied ✓'; }
+      catch (e) { ta.select(); document.execCommand('copy'); copy.textContent = 'Copied ✓'; }
+      setTimeout(() => copy.textContent = 'Copy reply', 1500);
+    });
+    reply.append(ta, copy); card.append(reply); list.append(card);
+  });
+  $('results').scrollIntoView({ behavior: 'smooth' });
+}
+
+// ---------- helpers ----------
+$('file').addEventListener('change', async (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  $('reviews').value = (await f.text()).trim();
+});
+
+$('demo').addEventListener('click', () => {
+  $('biz').value = "Rani's Salon"; $('owner').value = 'Rani (Owner)';
+  $('samples').value = [
+    "Thank you so much, Priya! Happy you loved the colour. Can't wait to see you again soon. – Rani",
+    "Hi Arjun, I'm sorry about the wait. That isn't how we want you to feel. Please message me directly so I can make it right. – Rani",
+    "Thanks for the kind words, Meera! I'll pass this on to the team, they'll be thrilled. – Rani"
+  ].join('\n\n');
+  $('reviews').value = [
+    "2026-09 | 5 | Best haircut I've had in years. Loved the staff and the head massage!",
+    "2026-09 | 1 | Waited 45 minutes even with an appointment. Receptionist was rude. Never coming back.",
+    "2026-09 | 4 | Great colour work but a bit pricey.",
+    "2026-10 | 2 | Slow service again and the place was not clean. Disappointed.",
+    "2026-10 | 5 | Lovely ambience, very clean, and Divya did an amazing job on my bridal makeup!",
+    "2026-10 | 3 | Haircut was fine. Parking is a nightmare and the wait was long."
+  ].join('\n\n');
+});
+</script>
+</body>
+</html>
